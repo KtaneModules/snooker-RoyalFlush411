@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class Balls:MonoBehaviour
+public class Ball : MonoBehaviour
 {
     public string colour;
     public int points;
