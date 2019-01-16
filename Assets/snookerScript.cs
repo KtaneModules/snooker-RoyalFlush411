@@ -1,19 +1,16 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEngine;
-using snooker;
 
 public class snookerScript : MonoBehaviour
 {
     public KMBombInfo Bomb;
     public KMAudio Audio;
-    public Balls[] balls;
+    public Ball[] balls;
     public KMSelectable cueBall;
-    public List<Balls> activeBalls = new List<Balls>();
-    public List<Balls> activeRedBalls = new List<Balls>();
-    private int activeRedBallsCount = 0;
     public TextMesh[] breakTargets;
     private int activeReds = 0;
     public Color[] uiColours;
@@ -39,11 +36,10 @@ public class snookerScript : MonoBehaviour
     public string[] loggingColours;
 
     private int currentBreak = 0;
-    private int[] breaksPlayed = new int[4];
+    private readonly int[] breaksPlayed = new int[4];
     private int breakShotsTaken = 0;
     private bool red;
     private bool targetRed = true;
-    private bool tableCleared;
 
     public AudioSource scoresSFX;
     public AudioClip[] scores;
@@ -63,15 +59,10 @@ public class snookerScript : MonoBehaviour
     {
         moduleId = moduleIdCounter++;
 
-        foreach(Balls ball in balls)
+        foreach (Ball ball in balls)
         {
             ball.selectable = ball.GetComponent<KMSelectable>();
-        }
-
-        foreach (Balls iterator in balls)
-        {
-            Balls pressedBall = iterator;
-            iterator.selectable.OnInteract += delegate () { OnBallPress(pressedBall); return false; };
+            ball.selectable.OnInteract += delegate () { OnBallPress(ball); return false; };
         }
         cueBall.OnInteract += delegate () { OnCueBallPress(); return false; };
     }
@@ -86,76 +77,60 @@ public class snookerScript : MonoBehaviour
 
     void SetUpBalls()
     {
-        activeReds = UnityEngine.Random.Range(7,10);
-        if(activeReds == 9)
+        activeReds = UnityEngine.Random.Range(8, 11);
+        if (activeReds == 9)
         {
-        }
-        else if(activeReds == 8)
-        {
-            int index = UnityEngine.Random.Range(0,6);
+            int index = UnityEngine.Random.Range(0, 6);
             balls[index].active = false;
             balls[index].gameObject.SetActive(false);
         }
-        else if(activeReds == 7)
+        else if (activeReds == 8)
         {
-            int index = UnityEngine.Random.Range(0,6);
+            int index = UnityEngine.Random.Range(0, 6);
             balls[index].active = false;
             balls[index].gameObject.SetActive(false);
-            int index2 = UnityEngine.Random.Range(0,6);
-            while(index2 == index)
+            int index2 = UnityEngine.Random.Range(0, 6);
+            while (index2 == index)
             {
-                index2 = UnityEngine.Random.Range(0,6);
+                index2 = UnityEngine.Random.Range(0, 6);
             }
             balls[index2].active = false;
             balls[index2].gameObject.SetActive(false);
         }
-        for(int i = 0; i <= 9; i++)
+        playerIndex = UnityEngine.Random.Range(0, 19);
+        playerIndex2 = UnityEngine.Random.Range(0, 19);
+        while (playerIndex2 == playerIndex)
         {
-            if(balls[i].active)
-            {
-                activeBalls.Add(balls[i]);
-                activeRedBalls.Add(balls[i]);
-                activeRedBallsCount++;
-            }
+            playerIndex2 = UnityEngine.Random.Range(0, 19);
         }
-        for(int i = 10; i <= 15; i++)
-        {
-            activeBalls.Add(balls[i]);
-        }
-        playerIndex = UnityEngine.Random.Range(0,19);
-        playerIndex2 = UnityEngine.Random.Range(0,19);
-        while(playerIndex2 == playerIndex)
-        {
-            playerIndex2 = UnityEngine.Random.Range(0,19);
-        }
-        Debug.LogFormat("[Snooker #{0}] You have {1} red balls available.", moduleId, activeRedBallsCount);
+        Debug.LogFormat("[Snooker #{0}] You have {1} red balls available.", moduleId, activeReds);
     }
 
     void CalculateShotsPerBreak()
     {
-        potentialShots = (activeRedBalls.Count() * 2) + 6;
+        potentialShots = (activeReds * 2) + 6;
         int breakIndex = potentialShots / 2;
-        int shots = UnityEngine.Random.Range(2,breakIndex);
+        int shots = UnityEngine.Random.Range(2, breakIndex);
         shotsPerBreak[0] = shots;
-        if(shots % 2 == 1 && (potentialShots - shots) > 6)
+        if (shots % 2 == 1 && (potentialShots - shots) > 6)
         {
             shots++;
         }
         potentialShots -= shots;
 
         breakIndex = potentialShots / 2;
-        shots = UnityEngine.Random.Range(5,breakIndex);
+        shots = UnityEngine.Random.Range(5, breakIndex);
         shotsPerBreak[1] = shots;
-        if(shots % 2 == 1 && (potentialShots - shots) > 6)
+        if (shots % 2 == 1 && (potentialShots - shots) > 6)
         {
             shots++;
         }
         potentialShots -= shots;
 
         breakIndex = potentialShots - 1;
-        shots = UnityEngine.Random.Range(3,breakIndex);
+        shots = UnityEngine.Random.Range(3, breakIndex);
         shotsPerBreak[2] = shots;
-        if(shots % 2 == 1 && (potentialShots - shots) > 6)
+        if (shots % 2 == 1 && (potentialShots - shots) > 6)
         {
             shots++;
         }
@@ -167,47 +142,47 @@ public class snookerScript : MonoBehaviour
     void CalculateBreaks()
     {
         actualShots = shotsPerBreak.Sum();
-        for(int i = 0; i <= 3; i++)
+        for (int i = 0; i <= 3; i++)
         {
             breakShotsTaken = 0;
-            if(actualShots - shotsPerBreak[i] >= 6)
+            if (actualShots - shotsPerBreak[i] >= 6)
             {
                 actualShots -= shotsPerBreak[i];
-                while(shotsPerBreak[i] - breakShotsTaken > 1)
+                while (shotsPerBreak[i] - breakShotsTaken > 1)
                 {
-                    int colour = UnityEngine.Random.Range(2,8);
+                    int colour = UnityEngine.Random.Range(2, 8);
                     breakBreakdown.Add(colour);
                     breaks[i] += colour + 1;
                     breakShotsTaken += 2;
                 }
-                if(breakShotsTaken != shotsPerBreak[i])
+                if (breakShotsTaken != shotsPerBreak[i])
                 {
                     breaks[i]++;
                 }
             }
             else
             {
-                red=true;
-                while(shotsPerBreak[i] - breakShotsTaken > 1 && actualShots > 6)
+                red = true;
+                while (shotsPerBreak[i] - breakShotsTaken > 1 && actualShots > 6)
                 {
-                    if(red)
+                    if (red)
                     {
                         breaks[i]++;
-                        red=false;
+                        red = false;
                         breakShotsTaken++;
                         actualShots--;
                     }
                     else
                     {
-                        int colour = UnityEngine.Random.Range(2,8);
+                        int colour = UnityEngine.Random.Range(2, 8);
                         breakBreakdown.Add(colour);
                         breaks[i] += colour;
-                        red=true;
+                        red = true;
                         breakShotsTaken++;
                         actualShots--;
                     }
                 }
-                while(shotsPerBreak[i] - breakShotsTaken > 0)
+                while (shotsPerBreak[i] - breakShotsTaken > 0)
                 {
                     breaks[i] += currentColour;
                     breakBreakdown.Add(currentColour);
@@ -217,7 +192,7 @@ public class snookerScript : MonoBehaviour
                 }
             }
         }
-        for(int i = 0; i <= 3; i++)
+        for (int i = 0; i <= 3; i++)
         {
             breakTargets[i].text = breaks[i].ToString();
             breakTargets[i].color = uiColours[2];
@@ -229,201 +204,201 @@ public class snookerScript : MonoBehaviour
     {
         break1Breakdown.Add(1);
         int breakStage = 0;
-        int redActive = activeRedBallsCount - 1;
-        while(break1Breakdown.Sum() != breaks[0])
+        int redActive = activeReds - 1;
+        while (break1Breakdown.Sum() != breaks[0])
         {
             break1Breakdown.Add(breakBreakdown[breakStage]);
             breakStage++;
-            if(break1Breakdown.Sum() == breaks[0])
+            if (break1Breakdown.Sum() == breaks[0])
             {
                 break;
             }
-            else if(redActive > 0)
+            else if (redActive > 0)
             {
                 break1Breakdown.Add(1);
                 redActive--;
             }
         }
 
-        if(redActive > 0)
+        if (redActive > 0)
         {
             break2Breakdown.Add(1);
             redActive--;
         }
-        while(break2Breakdown.Sum() != breaks[1])
+        while (break2Breakdown.Sum() != breaks[1])
         {
             break2Breakdown.Add(breakBreakdown[breakStage]);
             breakStage++;
-            if(break2Breakdown.Sum() == breaks[1])
+            if (break2Breakdown.Sum() == breaks[1])
             {
                 break;
             }
-            else if(redActive > 0)
+            else if (redActive > 0)
             {
                 break2Breakdown.Add(1);
                 redActive--;
             }
         }
 
-        if(redActive > 0)
+        if (redActive > 0)
         {
             break3Breakdown.Add(1);
             redActive--;
         }
-        while(break3Breakdown.Sum() != breaks[2])
+        while (break3Breakdown.Sum() != breaks[2])
         {
             break3Breakdown.Add(breakBreakdown[breakStage]);
             breakStage++;
-            if(break3Breakdown.Sum() == breaks[2])
+            if (break3Breakdown.Sum() == breaks[2])
             {
                 break;
             }
-            else if(redActive > 0)
+            else if (redActive > 0)
             {
                 break3Breakdown.Add(1);
                 redActive--;
             }
         }
 
-        if(redActive > 0)
+        if (redActive > 0)
         {
             break4Breakdown.Add(1);
             redActive--;
         }
-        while(break4Breakdown.Sum() != breaks[3])
+        while (break4Breakdown.Sum() != breaks[3])
         {
             break4Breakdown.Add(breakBreakdown[breakStage]);
             breakStage++;
-            if(break4Breakdown.Sum() == breaks[3])
+            if (break4Breakdown.Sum() == breaks[3])
             {
                 break;
             }
-            else if(redActive > 0)
+            else if (redActive > 0)
             {
                 break4Breakdown.Add(1);
                 redActive--;
             }
         }
-        for(int i = 0; i<=break1Breakdown.Count() - 1; i++)
+        for (int i = 0; i <= break1Breakdown.Count() - 1; i++)
         {
-            if(break1Breakdown[i] == 1)
+            if (break1Breakdown[i] == 1)
             {
                 break1String.Add("red");
             }
-            else if(break1Breakdown[i] == 2)
+            else if (break1Breakdown[i] == 2)
             {
                 break1String.Add("yellow");
             }
-            else if(break1Breakdown[i] == 3)
+            else if (break1Breakdown[i] == 3)
             {
                 break1String.Add("green");
             }
-            else if(break1Breakdown[i] == 4)
+            else if (break1Breakdown[i] == 4)
             {
                 break1String.Add("brown");
             }
-            else if(break1Breakdown[i] == 5)
+            else if (break1Breakdown[i] == 5)
             {
                 break1String.Add("blue");
             }
-            else if(break1Breakdown[i] == 6)
+            else if (break1Breakdown[i] == 6)
             {
                 break1String.Add("pink");
             }
-            else if(break1Breakdown[i] == 7)
+            else if (break1Breakdown[i] == 7)
             {
                 break1String.Add("black");
             }
         }
-        for(int i = 0; i<=break2Breakdown.Count() - 1; i++)
+        for (int i = 0; i <= break2Breakdown.Count() - 1; i++)
         {
-            if(break2Breakdown[i] == 1)
+            if (break2Breakdown[i] == 1)
             {
                 break2String.Add("red");
             }
-            else if(break2Breakdown[i] == 2)
+            else if (break2Breakdown[i] == 2)
             {
                 break2String.Add("yellow");
             }
-            else if(break2Breakdown[i] == 3)
+            else if (break2Breakdown[i] == 3)
             {
                 break2String.Add("green");
             }
-            else if(break2Breakdown[i] == 4)
+            else if (break2Breakdown[i] == 4)
             {
                 break2String.Add("brown");
             }
-            else if(break2Breakdown[i] == 5)
+            else if (break2Breakdown[i] == 5)
             {
                 break2String.Add("blue");
             }
-            else if(break2Breakdown[i] == 6)
+            else if (break2Breakdown[i] == 6)
             {
                 break2String.Add("pink");
             }
-            else if(break2Breakdown[i] == 7)
+            else if (break2Breakdown[i] == 7)
             {
                 break2String.Add("black");
             }
         }
-        for(int i = 0; i<=break3Breakdown.Count() - 1; i++)
+        for (int i = 0; i <= break3Breakdown.Count() - 1; i++)
         {
-            if(break3Breakdown[i] == 1)
+            if (break3Breakdown[i] == 1)
             {
                 break3String.Add("red");
             }
-            else if(break3Breakdown[i] == 2)
+            else if (break3Breakdown[i] == 2)
             {
                 break3String.Add("yellow");
             }
-            else if(break3Breakdown[i] == 3)
+            else if (break3Breakdown[i] == 3)
             {
                 break3String.Add("green");
             }
-            else if(break3Breakdown[i] == 4)
+            else if (break3Breakdown[i] == 4)
             {
                 break3String.Add("brown");
             }
-            else if(break3Breakdown[i] == 5)
+            else if (break3Breakdown[i] == 5)
             {
                 break3String.Add("blue");
             }
-            else if(break3Breakdown[i] == 6)
+            else if (break3Breakdown[i] == 6)
             {
                 break3String.Add("pink");
             }
-            else if(break3Breakdown[i] == 7)
+            else if (break3Breakdown[i] == 7)
             {
                 break3String.Add("black");
             }
         }
-        for(int i = 0; i<=break4Breakdown.Count() - 1; i++)
+        for (int i = 0; i <= break4Breakdown.Count() - 1; i++)
         {
-            if(break4Breakdown[i] == 1)
+            if (break4Breakdown[i] == 1)
             {
                 break4String.Add("red");
             }
-            else if(break4Breakdown[i] == 2)
+            else if (break4Breakdown[i] == 2)
             {
                 break4String.Add("yellow");
             }
-            else if(break4Breakdown[i] == 3)
+            else if (break4Breakdown[i] == 3)
             {
                 break4String.Add("green");
             }
-            else if(break4Breakdown[i] == 4)
+            else if (break4Breakdown[i] == 4)
             {
                 break4String.Add("brown");
             }
-            else if(break4Breakdown[i] == 5)
+            else if (break4Breakdown[i] == 5)
             {
                 break4String.Add("blue");
             }
-            else if(break4Breakdown[i] == 6)
+            else if (break4Breakdown[i] == 6)
             {
                 break4String.Add("pink");
             }
-            else if(break4Breakdown[i] == 7)
+            else if (break4Breakdown[i] == 7)
             {
                 break4String.Add("black");
             }
@@ -436,54 +411,54 @@ public class snookerScript : MonoBehaviour
         Debug.LogFormat("[Snooker #{0}] 4th break: {1}.", moduleId, string.Join(", ", break4String.Select((x) => x).ToArray()));
     }
 
-    public void OnBallPress(Balls iterator)
+    public void OnBallPress(Ball ball)
     {
-        iterator.selectable.AddInteractionPunch(0.5f);
-        currentBreak += iterator.points;
-        if(iterator.colour == "red" && targetRed && !clearance)
+        ball.selectable.AddInteractionPunch(0.5f);
+        currentBreak += ball.points;
+        if (ball.colour == "red" && targetRed && !clearance)
         {
-            iterator.active = false;
-            iterator.gameObject.SetActive(false);
+            ball.active = false;
+            ball.gameObject.SetActive(false);
             Debug.LogFormat("[Snooker #{0}] You potted a red ball. Current break: {1}.", moduleId, currentBreak);
             targetRed = false;
-            activeRedBallsCount--;
+            activeReds--;
             StartCoroutine(PlayAudio(currentBreak));
         }
-        else if(clearance)
+        else if (clearance)
         {
-            if(iterator.points == targetColour)
+            if (ball.points == targetColour)
             {
                 targetColour++;
-                iterator.active = false;
-                iterator.gameObject.SetActive(false);
-                Debug.LogFormat("[Snooker #{0}] You potted a {1} ball. Current break: {2}.", moduleId, iterator.colour, currentBreak);
+                ball.active = false;
+                ball.gameObject.SetActive(false);
+                Debug.LogFormat("[Snooker #{0}] You potted a {1} ball. Current break: {2}.", moduleId, ball.colour, currentBreak);
                 StartCoroutine(PlayAudio(currentBreak));
             }
             else
             {
-                StartCoroutine(PotReplace(iterator));
-                Debug.LogFormat("[Snooker #{0}] Strike! You potted a {1} ball. I was expecting a {2} ball. Table reset.", moduleId, iterator.colour, loggingColours[targetColour]);
+                StartCoroutine(PotReplace(ball));
+                Debug.LogFormat("[Snooker #{0}] Strike! You potted a {1} ball. I was expecting a {2} ball. Table reset.", moduleId, ball.colour, loggingColours[targetColour]);
                 Strike();
                 Audio.PlaySoundAtTransform("foul", transform);
             }
         }
-        else if((targetRed && iterator.colour != "red") || (!targetRed && iterator.colour == "red"))
+        else if ((targetRed && ball.colour != "red") || (!targetRed && ball.colour == "red"))
         {
-            if(targetRed)
+            if (targetRed)
             {
-                Debug.LogFormat("[Snooker #{0}] Strike! You potted a {1} ball. I was expecting a red ball. Table reset.", moduleId, iterator.colour);
+                Debug.LogFormat("[Snooker #{0}] Strike! You potted a {1} ball. I was expecting a red ball. Table reset.", moduleId, ball.colour);
             }
             else
             {
-                Debug.LogFormat("[Snooker #{0}] Strike! You potted a {1} ball. I was expecting a coloured ball. Table reset.", moduleId, iterator.colour);
+                Debug.LogFormat("[Snooker #{0}] Strike! You potted a {1} ball. I was expecting a coloured ball. Table reset.", moduleId, ball.colour);
             }
             Audio.PlaySoundAtTransform("foul", transform);
             Strike();
         }
         else
         {
-            Debug.LogFormat("[Snooker #{0}] You potted a {1} ball. Current break: {2}.", moduleId, iterator.colour, currentBreak);
-            StartCoroutine(PotReplace(iterator));
+            Debug.LogFormat("[Snooker #{0}] You potted a {1} ball. Current break: {2}.", moduleId, ball.colour, currentBreak);
+            StartCoroutine(PotReplace(ball));
             StartCoroutine(PlayAudio(currentBreak));
         }
     }
@@ -492,11 +467,11 @@ public class snookerScript : MonoBehaviour
     {
         cueBall.AddInteractionPunch();
         breaksPlayed[stage] = currentBreak;
-        if(breaksPlayed[stage] == breaks[stage])
+        if (breaksPlayed[stage] == breaks[stage])
         {
             breakTargets[stage].color = uiColours[1];
             stage++;
-            if(stage == 4)
+            if (stage == 4)
             {
                 SolveChecker();
             }
@@ -506,18 +481,9 @@ public class snookerScript : MonoBehaviour
                 StartCoroutine(EndTurnAudio());
                 breakTargets[stage].color = uiColours[0];
                 currentBreak = 0;
-                if(activeRedBallsCount == 0)
-                {
+                if (activeReds == 0)
                     clearance = true;
-                }
-                if(clearance)
-                {
-                    targetRed = false;
-                }
-                else
-                {
-                    targetRed = true;
-                }
+                targetRed = !clearance;
             }
         }
         else
@@ -529,20 +495,11 @@ public class snookerScript : MonoBehaviour
 
     }
 
-    IEnumerator PotReplace(Balls iterator)
+    IEnumerator PotReplace(Ball iterator)
     {
-        if(activeRedBallsCount == 0)
-        {
+        if (activeReds == 0)
             clearance = true;
-        }
-        if(!clearance)
-        {
-            targetRed = true;
-        }
-        else
-        {
-            targetRed = false;
-        }
+        targetRed = !clearance;
         iterator.gameObject.SetActive(false);
         yield return new WaitForSeconds(1f);
         iterator.gameObject.SetActive(true);
@@ -550,11 +507,11 @@ public class snookerScript : MonoBehaviour
 
     IEnumerator PlayAudio(int reportedBreak)
     {
-        int strikeIndex = UnityEngine.Random.Range(0,5);
+        int strikeIndex = UnityEngine.Random.Range(0, 5);
         strikeSFX.clip = strikeOptions[strikeIndex];
         strikeSFX.Play();
         yield return new WaitForSeconds(0.5f);
-        scoresSFX.clip = scores[reportedBreak-1];
+        scoresSFX.clip = scores[reportedBreak - 1];
         scoresSFX.Play();
     }
 
@@ -563,18 +520,13 @@ public class snookerScript : MonoBehaviour
         int currentBreak2 = currentBreak;
         strikeSFX.clip = applause;
         strikeSFX.Play();
-        if(stage % 2 == 0)
-        scoresSFX.clip = playerNames[playerIndex];
-        else
-        {
-            scoresSFX.clip = playerNames[playerIndex2];
-        }
+        scoresSFX.clip = playerNames[stage % 2 == 0 ? playerIndex : playerIndex2];
         scoresSFX.Play();
         yield return new WaitForSeconds(1.3f);
         scoresSFX.clip = scores[currentBreak2 - 1];
         scoresSFX.Play();
         yield return new WaitForSeconds(1.0f);
-        if(moduleSolved)
+        if (moduleSolved)
         {
             scoresSFX.clip = frame;
             scoresSFX.Play();
@@ -583,15 +535,7 @@ public class snookerScript : MonoBehaviour
 
     void SolveChecker()
     {
-        if(!balls[15].active && !balls[14].active && !balls[13].active && !balls[12].active && !balls[11].active && !balls[10].active)
-        {
-            tableCleared = true;
-        }
-        else
-        {
-            tableCleared = false;
-        }
-        if(tableCleared)
+        if (!balls[15].active && !balls[14].active && !balls[13].active && !balls[12].active && !balls[11].active && !balls[10].active)
         {
             moduleSolved = true;
             StartCoroutine(EndTurnAudio());
@@ -611,24 +555,21 @@ public class snookerScript : MonoBehaviour
     {
         GetComponent<KMBombModule>().HandleStrike();
         stage = 0;
-        foreach(Balls ball in balls)
+        foreach (Ball ball in balls)
         {
             ball.gameObject.SetActive(true);
         }
-        activeRedBalls.Clear();
-        activeBalls.Clear();
         activeReds = 0;
-        activeRedBallsCount = 0;
         currentColour = 2;
         potentialShots = 0;
         actualShots = 0;
-        for(int i = 0; i<= 3; i++)
+        for (int i = 0; i <= 3; i++)
         {
             shotsPerBreak[i] = 0;
             breaks[i] = 0;
             breaksPlayed[i] = 0;
         }
-        for(int i = 0; i <= 9; i++)
+        for (int i = 0; i < balls.Length; i++)
         {
             balls[i].active = true;
         }
@@ -648,5 +589,57 @@ public class snookerScript : MonoBehaviour
         break4Breakdown.Clear();
         break4String.Clear();
         Start();
+    }
+
+#pragma warning disable 414
+    private readonly string TwitchHelpMessage = "!{0} red blue red brown cue | !{0} RBRNRPW [N=brown, K=black]";
+#pragma warning restore 414
+
+    private static readonly string[] _colorNames = new[] { "white", "red", "yellow", "green", "brown", "blue", "pink", "black" };
+    private static readonly string[] _colorNamesShort = new[] { "WCwc", "Rr", "Yy", "Gg", "Nn", "Bb", "PIpi", "Kk" };
+
+    private IEnumerator ProcessTwitchCommand(string command)
+    {
+        var list = new List<string>();
+
+        Match m;
+        if ((m = Regex.Match(command, string.Format(@"^\s*([{0}\s]+)\s*$", string.Join("", _colorNamesShort)), RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)).Success)
+        {
+            foreach (var ch in m.Groups[1].Value)
+                if (!char.IsWhiteSpace(ch))
+                    list.Add(_colorNames[Array.FindIndex(_colorNamesShort, cn => cn.Contains(ch))]);
+        }
+        else if ((m = Regex.Match(command, string.Format(@"^\s*({0}|cue| |,|;)+\s*$", string.Join("|", _colorNames)), RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)).Success)
+            list.AddRange(m.Groups[1].Value.Split(new[] { ' ', ',', ';' }, StringSplitOptions.RemoveEmptyEntries));
+        else
+            yield break;
+
+        foreach (var color in list)
+        {
+            if (color.Equals("white", StringComparison.InvariantCultureIgnoreCase) || color.Equals("cue", StringComparison.InvariantCultureIgnoreCase))
+            {
+                yield return null;
+                yield return new[] { cueBall };
+                yield return new WaitForSeconds(2f);
+                continue;
+            }
+            var ball = balls.FirstOrDefault(b => b.active && b.colour.Equals(color, StringComparison.InvariantCultureIgnoreCase));
+            if (ball == null || ball.selectable == null)
+            {
+                Debug.LogFormat("<Snooker #{0}> Had the case where a {1} ball wasn’t available. Colors are: {2}", moduleId, color, string.Join(", ", balls.Select(b => string.Format("“{0}/{1}/{2}”", b.colour, b.active, b.selectable == null ? "null" : "sel")).ToArray()));
+                yield return string.Format("sendtochat There’s no “{0}” ball available.", color);
+                yield break;
+            }
+            if (!ball.gameObject.activeSelf)
+                yield return new WaitForSeconds(1f);
+            if (!ball.gameObject.activeSelf)
+            {
+                yield return string.Format("sendtochat There’s no {0} ball available.", color);
+                yield break;
+            }
+            yield return null;
+            yield return new[] { ball.selectable };
+            yield return new WaitForSeconds(1f);
+        }
     }
 }
