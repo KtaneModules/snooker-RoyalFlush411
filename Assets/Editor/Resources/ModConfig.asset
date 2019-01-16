@@ -13,7 +13,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: snooker
   title: Snooker
-  description: 'Snooker 1.03
+  description: 'Snooker 1.1
 
     Who knew there was so much maths in snooker?
 
@@ -23,8 +23,10 @@ MonoBehaviour:
 
     Created by: Royal_Flu$h
 
+    TwitchPlays implemented by: Timwi
+
 
     Manual available here: https://ktane.timwi.de/HTML/Snooker.html'
-  version: 1.03
+  version: 1.1
   outputFolder: build
   previewImage: {fileID: 2800000, guid: 05525b695515a4d46adac1a6bbe318cb, type: 3}

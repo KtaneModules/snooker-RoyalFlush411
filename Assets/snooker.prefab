@@ -4734,8 +4734,6 @@ MonoBehaviour:
   - {fileID: 114906282697832606}
   - {fileID: 114521198140095230}
   cueBall: {fileID: 114493797604444616}
-  activeBalls: []
-  activeRedBalls: []
   breakTargets:
   - {fileID: 102443151412433156}
   - {fileID: 102124424503696218}
