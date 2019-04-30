@@ -609,7 +609,7 @@ public class snookerScript : MonoBehaviour
                 if (!char.IsWhiteSpace(ch))
                     list.Add(_colorNames[Array.FindIndex(_colorNamesShort, cn => cn.Contains(ch))]);
         }
-        else if ((m = Regex.Match(command, string.Format(@"^\s*({0}|cue| |,|;)+\s*$", string.Join("|", _colorNames)), RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)).Success)
+        else if ((m = Regex.Match(command, string.Format(@"^\s*((?:{0}|cue| |,|;)+)\s*$", string.Join("|", _colorNames)), RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)).Success)
             list.AddRange(m.Groups[1].Value.Split(new[] { ' ', ',', ';' }, StringSplitOptions.RemoveEmptyEntries));
         else
             yield break;
