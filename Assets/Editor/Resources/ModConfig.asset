@@ -13,7 +13,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: snooker
   title: Snooker
-  description: 'Snooker 1.11
+  description: 'Snooker 1.12
 
     Who knew there was so much maths in snooker?
 
@@ -27,6 +27,6 @@ MonoBehaviour:
 
 
     Manual available here: https://ktane.timwi.de/HTML/Snooker.html'
-  version: 1.11
+  version: 1.12
   outputFolder: build
   previewImage: {fileID: 2800000, guid: 05525b695515a4d46adac1a6bbe318cb, type: 3}
